@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #f5f6fb;
+  --color-surface: #ffffff;
+  --color-foreground: #1a1a23;
+  --color-muted: #71717a;
+  --color-border: #e7e7f0;
+
+  --color-brand: #5b54e8;
+  --color-brand-strong: #4a43d6;
+  --color-brand-soft: #edecfd;
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer base {
+  /* Tailwind v4 defaults `border` to currentColor — pin it to the theme so
+     plain `border` utilities render a soft, intentional line. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    /* subtle brand glow behind the header */
+    background-image: radial-gradient(
+      48rem 24rem at 50% -8rem,
+      color-mix(in oklab, var(--color-brand) 18%, transparent),
+      transparent 70%
+    );
+    background-repeat: no-repeat;
+  }
+
+  ::selection {
+    background-color: var(--color-brand);
+    color: #fff;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  button:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--color-brand) 55%, transparent);
+    outline-offset: 2px;
+  }
+}
