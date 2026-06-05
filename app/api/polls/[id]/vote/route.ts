@@ -9,17 +9,32 @@ export async function POST(
   const { optionId, voterId } = await req.json();
 
   if (!optionId || !voterId) {
-    return NextResponse.json({ error: "Missing optionId or voterId." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing optionId or voterId." },
+      { status: 400 }
+    );
   }
 
   const { error } = await supabase
     .from("poll_votes")
-    .insert({ poll_id: pollId, poll_option_id: optionId, voter_id: voterId })
-    .onConflict("poll_id,voter_id")
-    .merge();
+    .upsert(
+      {
+        poll_id: pollId,
+        poll_option_id: optionId,
+        voter_id: voterId,
+      },
+      {
+        onConflict: "poll_id,voter_id",
+      }
+    );
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Poll Vote Error:", error);
+
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ ok: true });

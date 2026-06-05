@@ -27,7 +27,7 @@ export default async function Page() {
           Live Q&amp;A
         </h1>
         <p className="text-lg text-muted max-w-2xl">
-          Ask questions, upvote answers, create polls, and connect with the community in real-time.
+          Ask questions,create polls, and connect with the community in real-time.
         </p>
       </section>
 

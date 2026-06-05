@@ -80,5 +80,46 @@
     outline: 2px solid color-mix(in oklab, var(--color-brand) 55%, transparent);
     outline-offset: 2px;
   }
+
+  /* Glowing cursor effect */
+  body {
+    cursor: none;
+  }
+
+  .cursor-glow {
+    position: fixed;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--color-brand);
+    pointer-events: none;
+    z-index: 9999;
+    mix-blend-mode: screen;
+    transition: transform 0.15s ease-out;
+    box-shadow: 
+      0 0 20px var(--color-brand),
+      0 0 40px var(--color-brand),
+      0 0 60px var(--color-brand);
+  }
+
+  .cursor-trail {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-brand);
+    pointer-events: none;
+    z-index: 9998;
+    opacity: 0.6;
+    transition: transform 0.3s ease-out;
+    box-shadow: 
+      0 0 10px var(--color-brand),
+      0 0 20px var(--color-brand);
+  }
+
+  /* Show default cursor on interactive elements */
+  a, button, input, textarea, select, [role="button"] {
+    cursor: pointer;
+  }
 }
 
