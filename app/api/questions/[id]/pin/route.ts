@@ -6,17 +6,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: questionId } = await params;
-  const { voterId, direction } = await req.json();
+  const { pinned } = await req.json();
 
-  if (![1, -1].includes(direction)) {
-    return NextResponse.json({ error: "invalid vote direction" }, { status: 400 });
+  if (typeof pinned !== "boolean") {
+    return NextResponse.json({ error: "Pinned must be a boolean." }, { status: 400 });
   }
 
   const { error } = await supabase
-    .from("votes")
-    .insert({ question_id: questionId, voter_id: voterId, direction })
-    .onConflict("question_id,voter_id")
-    .merge();
+    .from("questions")
+    .update({ pinned })
+    .eq("id", questionId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -4,6 +4,9 @@
 -- indexes, and seeds 25 questions so pagination and search have volume.
 
 -- ── reset ──────────────────────────────────────────────────────────────────
+drop table if exists poll_votes;
+drop table if exists poll_options;
+drop table if exists polls;
 drop table if exists votes;
 drop table if exists questions cascade;
 drop function if exists increment_question_votes(uuid);
@@ -13,6 +16,7 @@ create table questions (
   id          uuid primary key default gen_random_uuid(),
   body        text not null,
   author      text,
+  pinned      boolean default false,
   created_at  timestamptz default now()
 );
 
@@ -23,11 +27,36 @@ create table votes (
   id           uuid primary key default gen_random_uuid(),
   question_id  uuid not null references questions(id) on delete cascade,
   voter_id     text not null,
+  direction    integer not null default 1,
   created_at   timestamptz default now(),
   unique (question_id, voter_id)
 );
 
 create index votes_question_id_idx on votes (question_id);
+
+-- ── polls (Feature 6) ──────────────────────────────────────────────────────
+create table polls (
+  id          uuid primary key default gen_random_uuid(),
+  question    text not null,
+  created_at  timestamptz default now()
+);
+
+create table poll_options (
+  id          uuid primary key default gen_random_uuid(),
+  poll_id     uuid not null references polls(id) on delete cascade,
+  label       text not null
+);
+
+create table poll_votes (
+  id             uuid primary key default gen_random_uuid(),
+  poll_id        uuid not null references polls(id) on delete cascade,
+  poll_option_id uuid not null references poll_options(id) on delete cascade,
+  voter_id       text not null,
+  created_at     timestamptz default now(),
+  unique (poll_id, voter_id)
+);
+
+create index poll_votes_poll_id_idx on poll_votes (poll_id);
 
 -- ── full-text search index (Feature 5) ───────────────────────────────────────
 -- GIN = Generalized INverted index: the word → documents map behind search.

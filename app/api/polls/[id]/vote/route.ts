@@ -5,17 +5,17 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: questionId } = await params;
-  const { voterId, direction } = await req.json();
+  const { id: pollId } = await params;
+  const { optionId, voterId } = await req.json();
 
-  if (![1, -1].includes(direction)) {
-    return NextResponse.json({ error: "invalid vote direction" }, { status: 400 });
+  if (!optionId || !voterId) {
+    return NextResponse.json({ error: "Missing optionId or voterId." }, { status: 400 });
   }
 
   const { error } = await supabase
-    .from("votes")
-    .insert({ question_id: questionId, voter_id: voterId, direction })
-    .onConflict("question_id,voter_id")
+    .from("poll_votes")
+    .insert({ poll_id: pollId, poll_option_id: optionId, voter_id: voterId })
+    .onConflict("poll_id,voter_id")
     .merge();
 
   if (error) {

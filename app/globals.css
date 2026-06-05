@@ -16,8 +16,41 @@
 }
 
 @layer base {
-  /* Tailwind v4 defaults `border` to currentColor — pin it to the theme so
-     plain `border` utilities render a soft, intentional line. */
+  :root {
+    --color-background: #f5f6fb;
+    --color-surface: #ffffff;
+    --color-foreground: #1a1a23;
+    --color-muted: #71717a;
+    --color-border: #e7e7f0;
+    --color-brand: #5b54e8;
+    --color-brand-strong: #4a43d6;
+    --color-brand-soft: #edecfd;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background: #0f0f12;
+      --color-surface: #1a1a1f;
+      --color-foreground: #f5f5f8;
+      --color-muted: #a0a0a8;
+      --color-border: #2a2a32;
+      --color-brand: #6c63ff;
+      --color-brand-strong: #7c73ff;
+      --color-brand-soft: #2a2620;
+    }
+  }
+
+  .dark {
+    --color-background: #0f0f12;
+    --color-surface: #1a1a1f;
+    --color-foreground: #f5f5f8;
+    --color-muted: #a0a0a8;
+    --color-border: #2a2a32;
+    --color-brand: #6c63ff;
+    --color-brand-strong: #7c73ff;
+    --color-brand-soft: #2a2620;
+  }
+
   *,
   ::before,
   ::after {
@@ -27,13 +60,13 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    /* subtle brand glow behind the header */
     background-image: radial-gradient(
       48rem 24rem at 50% -8rem,
       color-mix(in oklab, var(--color-brand) 18%, transparent),
       transparent 70%
     );
     background-repeat: no-repeat;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   ::selection {
@@ -48,3 +81,4 @@
     outline-offset: 2px;
   }
 }
+
