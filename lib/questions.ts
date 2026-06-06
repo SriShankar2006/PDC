@@ -1,17 +1,18 @@
 import { supabase } from "@/lib/supabase";
 
 export async function getQuestionsPage(offset: number, limit: number) {
+  // range is inclusive on both ends, so fetch limit+1 to detect hasMore
   const { data, error } = await supabase
     .from("questions")
-    .select("id, body, author, created_at, pinned, votes(direction)")
+    .select("id, body, author, created_at, pinned, votes(direction), answers(id, answer_text, created_at)")
     .order("pinned", { ascending: false })
     .order("created_at", { ascending: false })
-    .range(offset, offset + limit); // inclusive → asks for limit + 1 rows
+    .range(offset, offset + limit); // fetches limit+1 rows
 
   if (error) {
     if (error.code === "PGRST205") {
       throw new Error(
-        "Supabase table 'public.questions' is missing. Run the SQL in supabase/schema.sql in your Supabase project."
+        "Supabase table 'public.questions' is missing. Run the SQL in supabase/schema.sql."
       );
     }
     throw new Error(error.message);
@@ -22,17 +23,24 @@ export async function getQuestionsPage(offset: number, limit: number) {
     body: q.body,
     author: q.author,
     pinned: q.pinned ?? false,
-    votes: q.votes?.reduce((sum, vote) => sum + (vote.direction ?? 0), 0) ?? 0,
+    votes: q.votes?.reduce((sum: number, vote: { direction: number }) => sum + (vote.direction ?? 0), 0) ?? 0,
+    answers: (q.answers ?? []).map((a: { id: string; answer_text: string; created_at: string }) => ({
+      id: a.id,
+      body: a.answer_text,
+      author: null,
+      reactions: {} as Record<string, number>,
+      replies: [] as never[],
+    })),
   }));
 
-  const hasMore = rows.length > limit; // got the extra row? there's a next page
+  const hasMore = rows.length > limit;
   return { questions: rows.slice(0, limit), hasMore };
 }
 
 export async function searchQuestions(q: string, limit: number) {
   const { data, error } = await supabase
     .from("questions")
-    .select("id, body, author, pinned, votes(direction)")
+    .select("id, body, author, pinned, votes(direction), answers(id, answer_text, created_at)")
     .textSearch("body", q, { type: "websearch", config: "english" })
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -40,7 +48,7 @@ export async function searchQuestions(q: string, limit: number) {
   if (error) {
     if (error.code === "PGRST205") {
       throw new Error(
-        "Supabase table 'public.questions' is missing. Run the SQL in supabase/schema.sql in your Supabase project."
+        "Supabase table 'public.questions' is missing. Run the SQL in supabase/schema.sql."
       );
     }
     throw new Error(error.message);
@@ -51,6 +59,13 @@ export async function searchQuestions(q: string, limit: number) {
     body: row.body,
     author: row.author,
     pinned: row.pinned ?? false,
-    votes: row.votes?.reduce((sum, vote) => sum + (vote.direction ?? 0), 0) ?? 0,
+    votes: row.votes?.reduce((sum: number, vote: { direction: number }) => sum + (vote.direction ?? 0), 0) ?? 0,
+    answers: (row.answers ?? []).map((a: { id: string; answer_text: string; created_at: string }) => ({
+      id: a.id,
+      body: a.answer_text,
+      author: null,
+      reactions: {} as Record<string, number>,
+      replies: [] as never[],
+    })),
   }));
 }

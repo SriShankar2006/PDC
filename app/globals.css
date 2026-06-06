@@ -81,45 +81,70 @@
     outline-offset: 2px;
   }
 
-  /* Glowing cursor effect */
-  body {
-    cursor: none;
-  }
+  /* Hide default cursor — liquid cursor is rendered via JS */
+/* ==========================================
+   Hero Spotlight Effect
+========================================== */
 
-  .cursor-glow {
-    position: fixed;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--color-brand);
-    pointer-events: none;
-    z-index: 9999;
-    mix-blend-mode: screen;
-    transition: transform 0.15s ease-out;
-    box-shadow: 
-      0 0 20px var(--color-brand),
-      0 0 40px var(--color-brand),
-      0 0 60px var(--color-brand);
-  }
-
-  .cursor-trail {
-    position: fixed;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--color-brand);
-    pointer-events: none;
-    z-index: 9998;
-    opacity: 0.6;
-    transition: transform 0.3s ease-out;
-    box-shadow: 
-      0 0 10px var(--color-brand),
-      0 0 20px var(--color-brand);
-  }
-
-  /* Show default cursor on interactive elements */
-  a, button, input, textarea, select, [role="button"] {
-    cursor: pointer;
-  }
+.hero-spotlight {
+  position: relative;
+  overflow: hidden;
 }
 
+.hero-spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  background:
+    radial-gradient(
+      400px circle at var(--mouse-x) var(--mouse-y),
+      rgba(91, 84, 232, 0.08),
+      transparent 70%
+    );
+
+  transition: background 0.05s linear;
+}
+
+/* ==========================================
+   Magnetic Elements
+========================================== */
+
+.magnetic {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.magnetic:hover {
+  box-shadow:
+    0 10px 30px rgba(91, 84, 232, 0.15);
+}
+
+/* ==========================================
+   Card Hover Effects
+========================================== */
+
+.question-card,
+.poll-card {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.question-card:hover,
+.poll-card:hover {
+  transform: translateY(-2px);
+}
+
+/* ==========================================
+   Performance
+========================================== */
+
+html,
+body {
+  overflow-x: hidden;
+}
+}

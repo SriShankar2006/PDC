@@ -19,10 +19,11 @@ export default function PollsList({ initialPolls }: { initialPolls: Poll[] }) {
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState(["", ""]);
   const [saving, setSaving] = useState(false);
-  const [userVotes, setUserVotes] = useState<{ [key: string]: string }>({});
+  // track which optionId the user voted per poll
+  const [userVotes, setUserVotes] = useState<Record<string, string>>({});
 
   function updateOption(index: number, value: string) {
-    setOptions((prev) => prev.map((option, i) => (i === index ? value : option)));
+    setOptions((prev) => prev.map((o, i) => (i === index ? value : o)));
   }
 
   function addOption() {
@@ -30,7 +31,7 @@ export default function PollsList({ initialPolls }: { initialPolls: Poll[] }) {
   }
 
   function getTotalVotes(poll: Poll) {
-    return poll.options.reduce((sum, option) => sum + option.votes, 0);
+    return poll.options.reduce((sum, o) => sum + o.votes, 0);
   }
 
   function getPercentage(option: PollOption, total: number) {
@@ -39,7 +40,7 @@ export default function PollsList({ initialPolls }: { initialPolls: Poll[] }) {
 
   async function createPoll() {
     const trimmedQuestion = question.trim();
-    const validOptions = options.map((option) => option.trim()).filter(Boolean);
+    const validOptions = options.map((o) => o.trim()).filter(Boolean);
     if (!trimmedQuestion || validOptions.length < 2) return;
 
     setSaving(true);
@@ -51,7 +52,6 @@ export default function PollsList({ initialPolls }: { initialPolls: Poll[] }) {
     setSaving(false);
 
     if (!res.ok) return;
-
     const created = await res.json();
     setPolls((prev) => [{ ...created, options: created.options }, ...prev]);
     setQuestion("");
@@ -59,32 +59,55 @@ export default function PollsList({ initialPolls }: { initialPolls: Poll[] }) {
   }
 
   async function vote(pollId: string, optionId: string) {
+    const prevOptionId = userVotes[pollId]; // what they voted before (if any)
+
+    // Don't re-vote the same option
+    if (prevOptionId === optionId) return;
+
+    // Optimistic update: move vote from old option to new option
     setUserVotes((prev) => ({ ...prev, [pollId]: optionId }));
-    
     setPolls((prev) =>
-      prev.map((poll) =>
-        poll.id === pollId
-          ? {
-              ...poll,
-              options: poll.options.map((option) => ({
-                ...option,
-                votes: option.id === optionId ? option.votes + 1 : option.votes,
-              })),
-            }
-          : poll
-      )
+      prev.map((poll) => {
+        if (poll.id !== pollId) return poll;
+        return {
+          ...poll,
+          options: poll.options.map((o) => {
+            if (o.id === optionId) return { ...o, votes: o.votes + 1 };         // +1 new
+            if (o.id === prevOptionId) return { ...o, votes: Math.max(0, o.votes - 1) }; // -1 old
+            return o;
+          }),
+        };
+      })
     );
 
-    await fetch(`/api/polls/${pollId}/vote`, {
+    const res = await fetch(`/api/polls/${pollId}/vote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ optionId, voterId: getVoterId() }),
     });
+
+    if (!res.ok) {
+      // Rollback on failure
+      setUserVotes((prev) => ({ ...prev, [pollId]: prevOptionId ?? "" }));
+      setPolls((prev) =>
+        prev.map((poll) => {
+          if (poll.id !== pollId) return poll;
+          return {
+            ...poll,
+            options: poll.options.map((o) => {
+              if (o.id === optionId) return { ...o, votes: Math.max(0, o.votes - 1) };
+              if (o.id === prevOptionId) return { ...o, votes: o.votes + 1 };
+              return o;
+            }),
+          };
+        })
+      );
+    }
   }
 
   return (
     <div className="space-y-6">
-      {/* Create Poll Section */}
+      {/* Create Poll */}
       <div className="rounded-2xl border border-border bg-surface p-6 shadow-lg">
         <h2 className="mb-4 text-lg font-semibold">Create a Poll</h2>
         <div className="space-y-4">
@@ -92,7 +115,7 @@ export default function PollsList({ initialPolls }: { initialPolls: Poll[] }) {
             <label className="block text-sm font-medium mb-2">Poll Question</label>
             <input
               value={question}
-              onChange={(event) => setQuestion(event.target.value)}
+              onChange={(e) => setQuestion(e.target.value)}
               placeholder="What would you like to ask?"
               className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none placeholder:text-muted focus:border-brand focus:ring-1 focus:ring-brand/50"
             />
@@ -104,7 +127,7 @@ export default function PollsList({ initialPolls }: { initialPolls: Poll[] }) {
                 <label className="block text-sm font-medium mb-2">Option {index + 1}</label>
                 <input
                   value={option}
-                  onChange={(event) => updateOption(index, event.target.value)}
+                  onChange={(e) => updateOption(index, e.target.value)}
                   placeholder={`Option ${index + 1}`}
                   className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none placeholder:text-muted focus:border-brand focus:ring-1 focus:ring-brand/50"
                 />
@@ -126,13 +149,13 @@ export default function PollsList({ initialPolls }: { initialPolls: Poll[] }) {
               disabled={saving}
               className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand-strong hover:shadow-lg disabled:opacity-50"
             >
-              Create Poll
+              {saving ? "Creating…" : "Create Poll"}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Active Polls Section */}
+      {/* Active Polls */}
       {polls.length > 0 && (
         <div>
           <h2 className="mb-4 text-lg font-semibold">Active Polls</h2>
@@ -142,9 +165,7 @@ export default function PollsList({ initialPolls }: { initialPolls: Poll[] }) {
               return (
                 <div key={poll.id} className="rounded-2xl border border-border bg-surface p-6 shadow-md">
                   <div className="mb-5">
-                    <h3 className="text-lg font-semibold text-foreground">
-                      {poll.question}
-                    </h3>
+                    <h3 className="text-lg font-semibold text-foreground">{poll.question}</h3>
                     <p className="mt-2 text-sm text-muted">
                       {totalVotes} vote{totalVotes !== 1 ? "s" : ""}
                     </p>
@@ -167,9 +188,7 @@ export default function PollsList({ initialPolls }: { initialPolls: Poll[] }) {
                         >
                           <div className="p-4">
                             <div className="flex items-center justify-between gap-4 mb-2">
-                              <span className="font-medium text-foreground">
-                                {option.label}
-                              </span>
+                              <span className="font-medium text-foreground">{option.label}</span>
                               <span className="text-sm font-semibold tabular-nums text-brand">
                                 {percentage}%
                               </span>
@@ -177,7 +196,7 @@ export default function PollsList({ initialPolls }: { initialPolls: Poll[] }) {
                             <div className="flex items-center gap-2">
                               <div className="flex-1 h-2 overflow-hidden rounded-full bg-border">
                                 <div
-                                  className="h-2 rounded-full bg-brand transition-all"
+                                  className="h-2 rounded-full bg-brand transition-all duration-500"
                                   style={{ width: `${percentage}%` }}
                                 />
                               </div>

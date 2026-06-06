@@ -13,7 +13,9 @@ export async function GET() {
 
   const { data: options, error: optionsError } = await supabase
     .from("poll_options")
-    .select("id, label, poll_id");
+    .select("id, label, poll_id, position")
+    .order("poll_id", { ascending: true })
+    .order("position", { ascending: true });
 
   if (optionsError) {
     return NextResponse.json({ error: optionsError.message }, { status: 500 });
@@ -82,9 +84,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error?.message ?? "Failed to create poll." }, { status: 500 });
   }
 
-  const optionRows = validOptions.map((label: string) => ({
+  const optionRows = validOptions.map((label: string, index: number) => ({
     poll_id: poll.id,
     label,
+    position: index,
   }));
 
   const { data: insertedOptions, error: optionError } = await supabase

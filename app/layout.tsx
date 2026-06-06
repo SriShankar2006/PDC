@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import ThemeToggle from "./theme-toggle";
+import ThemeTransition from "./theme-transition";
 import CursorGlow from "./cursor-glow";
 import "./globals.css";
 
@@ -27,20 +28,31 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
+        {/* Global Cursor Effects */}
         <CursorGlow />
-        <nav className="border-b border-border bg-surface/50 backdrop-blur-sm sticky top-0 z-50">
-          <div className="mx-auto w-full max-w-2xl px-5 py-4 flex items-center justify-between">
+
+        {/* Theme Transition */}
+        <ThemeTransition />
+
+        {/* Navbar */}
+        <nav className="sticky top-0 z-50 border-b border-border bg-surface/50 backdrop-blur-sm">
+          <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-5 py-4">
             <div>
               <h1 className="text-xl font-bold">Kealvi</h1>
             </div>
+
             <ThemeToggle />
           </div>
         </nav>
-        {children}
+
+        {/* Main Content */}
+        <main className="flex-1">
+          {children}
+        </main>
       </body>
     </html>
   );

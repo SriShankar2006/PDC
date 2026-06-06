@@ -36,10 +36,13 @@ export default function ThemeToggle() {
         const nextTheme = theme === "light" ? "dark" : "light";
         applyTheme(nextTheme);
       }}
-      className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground transition-colors hover:bg-background dark:hover:bg-background"
+      className="group relative rounded-lg border border-border bg-surface px-4 py-2 text-sm text-foreground transition-all duration-300 hover:bg-background hover:scale-110 hover:shadow-lg hover:shadow-brand/20 dark:hover:bg-background overflow-hidden"
       aria-label="Toggle theme"
     >
-      {theme === "light" || (theme === "system" && !document.documentElement.classList.contains("dark")) ? "🌙" : "☀️"}
+      <span className="relative z-10 inline-block transition-transform duration-500 group-hover:rotate-180">
+        {theme === "light" || (theme === "system" && !document.documentElement.classList.contains("dark")) ? "🌙" : "☀️"}
+      </span>
+      <span className="absolute inset-0 bg-gradient-to-r from-brand/10 to-brand-strong/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
     </button>
   );
 }

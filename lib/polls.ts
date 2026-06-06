@@ -3,14 +3,14 @@ import { supabase } from "@/lib/supabase";
 type PollOptionRow = {
   id: string;
   label: string;
-  votes?: { count: number }[];
+  poll_id: string;
+  position: number;
 };
 
 type PollRow = {
   id: string;
   question: string;
   created_at: string;
-  poll_options?: PollOptionRow[];
 };
 
 export async function getPolls() {
@@ -19,25 +19,21 @@ export async function getPolls() {
     .select("id, question, created_at")
     .order("created_at", { ascending: false });
 
-  if (pollsError) {
-    throw new Error(pollsError.message);
-  }
+  if (pollsError) throw new Error(pollsError.message);
 
   const { data: options, error: optionsError } = await supabase
     .from("poll_options")
-    .select("id, label, poll_id");
+    .select("id, label, poll_id, position")
+    .order("poll_id", { ascending: true })
+    .order("position", { ascending: true });
 
-  if (optionsError) {
-    throw new Error(optionsError.message);
-  }
+  if (optionsError) throw new Error(optionsError.message);
 
   const { data: votes, error: votesError } = await supabase
-    .from("votes")
+    .from("poll_votes")
     .select("poll_option_id");
 
-  if (votesError) {
-    throw new Error(votesError.message);
-  }
+  if (votesError) throw new Error(votesError.message);
 
   const optionVotes = new Map<string, number>();
   for (const vote of votes ?? []) {
@@ -48,8 +44,8 @@ export async function getPolls() {
     );
   }
 
-  const optionsByPoll = new Map<string, typeof options>();
-  for (const option of options ?? []) {
+  const optionsByPoll = new Map<string, PollOptionRow[]>();
+  for (const option of (options ?? []) as PollOptionRow[]) {
     const pollId = option.poll_id;
     if (!pollId) continue;
     const existing = optionsByPoll.get(pollId) ?? [];

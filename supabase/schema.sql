@@ -44,19 +44,26 @@ create table polls (
 create table poll_options (
   id          uuid primary key default gen_random_uuid(),
   poll_id     uuid not null references polls(id) on delete cascade,
-  label       text not null
+  label       text not null,
+  position    integer not null default 0,
+  unique (poll_id, id),
+  unique (poll_id, position)
 );
 
 create table poll_votes (
   id             uuid primary key default gen_random_uuid(),
   poll_id        uuid not null references polls(id) on delete cascade,
-  poll_option_id uuid not null references poll_options(id) on delete cascade,
+  poll_option_id uuid not null,
   voter_id       text not null,
   created_at     timestamptz default now(),
-  unique (poll_id, voter_id)
+  unique (poll_id, voter_id),
+  foreign key (poll_id, poll_option_id)
+    references poll_options(poll_id, id)
+    on delete cascade
 );
 
 create index poll_votes_poll_id_idx on poll_votes (poll_id);
+create index poll_votes_poll_option_id_idx on poll_votes (poll_option_id);
 
 -- ── full-text search index (Feature 5) ───────────────────────────────────────
 -- GIN = Generalized INverted index: the word → documents map behind search.
