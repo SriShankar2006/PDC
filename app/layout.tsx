@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import ThemeToggle from "./theme-toggle";
 import ThemeTransition from "./theme-transition";
 import CursorGlow from "./cursor-glow";
+import CelestialBg from "./celestial-bg";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Live Q&A",
+  title: "Kealvi — Live Q&A",
   description: "Ask and vote on questions, create and answer polls",
 };
 
@@ -32,25 +32,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
-        {/* Global Cursor Effects */}
         <CursorGlow />
-
-        {/* Theme Transition */}
         <ThemeTransition />
-
-        {/* Navbar */}
-        <nav className="sticky top-0 z-50 border-b border-border bg-surface/50 backdrop-blur-sm">
-          <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-5 py-4">
-            <div>
-              <h1 className="text-xl font-bold">Kealvi</h1>
-            </div>
-
-            <ThemeToggle />
-          </div>
-        </nav>
-
-        {/* Main Content */}
-        <main className="flex-1">
+        <CelestialBg />
+        <main className="flex-1 relative z-10">
           {children}
         </main>
       </body>

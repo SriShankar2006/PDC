@@ -1,17 +1,18 @@
 -- Day 5 schema — run this once in the Supabase SQL Editor.
--- It resets to a clean slate (drops the previous experiment), creates the
--- tables in the shape the guide uses (votes as ROWS, not a column), adds the
--- indexes, and seeds 25 questions so pagination and search have volume.
+-- Resets the environment, creates relational tables, structures robust
+-- constraints, adds GIN indexes, and seeds 25 questions along with initial answers.
 
--- ── reset ──────────────────────────────────────────────────────────────────
-drop table if exists poll_votes;
-drop table if exists poll_options;
-drop table if exists polls;
-drop table if exists votes;
+-- ── RESET EXISTING ENVIRONMENT ──────────────────────────────────────────────
+drop table if exists poll_votes cascade;
+drop table if exists poll_options cascade;
+drop table if exists polls cascade;
+drop table if exists reactions cascade;
+drop table if exists replies cascade;
+drop table if exists votes cascade;
+drop table if exists answers cascade;
 drop table if exists questions cascade;
-drop function if exists increment_question_votes(uuid);
 
--- ── questions (Feature 1) ────────────────────────────────────────────────────
+-- ── QUESTIONS TABLE (Feature 1) ──────────────────────────────────────────────
 create table questions (
   id          uuid primary key default gen_random_uuid(),
   body        text not null,
@@ -20,9 +21,17 @@ create table questions (
   created_at  timestamptz default now()
 );
 
--- ── votes (Feature 3) ────────────────────────────────────────────────────────
--- one row per vote; the FK guarantees a vote points at a real question, and
--- the unique constraint enforces one vote per voter per question.
+-- ── ANSWERS TABLE (Feature 2 - Dependency for questions.ts) ──────────────────
+create table answers (
+  id          uuid primary key default gen_random_uuid(),
+  question_id uuid not null references questions(id) on delete cascade,
+  answer_text text not null,
+  created_at  timestamptz default now()
+);
+
+create index answers_question_id_idx on answers (question_id);
+
+-- ── VOTES TABLE (Feature 3) ──────────────────────────────────────────────────
 create table votes (
   id           uuid primary key default gen_random_uuid(),
   question_id  uuid not null references questions(id) on delete cascade,
@@ -34,7 +43,32 @@ create table votes (
 
 create index votes_question_id_idx on votes (question_id);
 
--- ── polls (Feature 6) ──────────────────────────────────────────────────────
+-- ── REACTIONS TABLE (Feature 4) ──────────────────────────────────────────────
+create table reactions (
+  id          uuid primary key default gen_random_uuid(),
+  question_id uuid not null references questions(id) on delete cascade,
+  emoji       text not null,
+  user_id     text not null,
+  created_at  timestamptz default now(),
+  unique (question_id, user_id, emoji)
+);
+
+create index reactions_question_id_idx on reactions (question_id);
+
+-- ── REPLIES TABLE (Feature 5) ─────────────────────────────────────────────────
+-- Replies are scoped to an answer (answer_id). The API route uses the [id]
+-- segment as the answer_id so each answer has its own independent reply thread.
+create table replies (
+  id          uuid primary key default gen_random_uuid(),
+  answer_id   uuid not null references answers(id) on delete cascade,
+  content     text not null,
+  author_name text,
+  created_at  timestamptz default now()
+);
+
+create index replies_answer_id_idx on replies (answer_id);
+
+-- ── POLLS & POLL OPTIONS TABLES (Feature 6) ──────────────────────────────────
 create table polls (
   id          uuid primary key default gen_random_uuid(),
   question    text not null,
@@ -42,10 +76,10 @@ create table polls (
 );
 
 create table poll_options (
-  id          uuid primary key default gen_random_uuid(),
-  poll_id     uuid not null references polls(id) on delete cascade,
-  label       text not null,
-  position    integer not null default 0,
+  id        uuid primary key default gen_random_uuid(),
+  poll_id   uuid not null references polls(id) on delete cascade,
+  label     text not null,
+  position  integer not null default 0,
   unique (poll_id, id),
   unique (poll_id, position)
 );
@@ -65,11 +99,10 @@ create table poll_votes (
 create index poll_votes_poll_id_idx on poll_votes (poll_id);
 create index poll_votes_poll_option_id_idx on poll_votes (poll_option_id);
 
--- ── full-text search index (Feature 5) ───────────────────────────────────────
--- GIN = Generalized INverted index: the word → documents map behind search.
+-- ── FULL-TEXT SEARCH INDEX ────────────────────────────────────────────────────
 create index questions_fts_idx on questions using gin (to_tsvector('english', body));
 
--- ── seed (~25 questions, spaced out in time so ordering is stable) ───────────
+-- ── DATA SEED RITUALS (~25 questions with ordered timestamps) ────────────────
 insert into questions (body, author, created_at)
 select body, author, now() - (n || ' minutes')::interval
 from (

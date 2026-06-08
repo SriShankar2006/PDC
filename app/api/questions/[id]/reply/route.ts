@@ -6,7 +6,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: questionId } = await params;
+    // [id] is the answer_id — each answer has its own reply thread
+    const { id: answerId } = await params;
     const { content, author_name } = await req.json();
 
     if (!content?.trim()) {
@@ -16,16 +17,20 @@ export async function POST(
     const { data, error } = await supabase
       .from("replies")
       .insert({
-        question_id: questionId,
+        answer_id: answerId,
         content: content.trim(),
         author_name: author_name?.trim() || null,
       })
       .select()
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error("❌ Reply POST Supabase error:", JSON.stringify(error, null, 2));
+      return NextResponse.json({ error: error.message, details: error }, { status: 500 });
+    }
     return NextResponse.json(data, { status: 201 });
-  } catch {
+  } catch (err: unknown) {
+    console.error("❌ Reply POST unexpected error:", err);
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 }
@@ -35,17 +40,22 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: questionId } = await params;
+    // [id] is the answer_id — fetch only replies for this specific answer
+    const { id: answerId } = await params;
 
     const { data, error } = await supabase
       .from("replies")
       .select("id, content, author_name, created_at")
-      .eq("question_id", questionId)
+      .eq("answer_id", answerId)
       .order("created_at", { ascending: true });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error("❌ Reply GET Supabase error:", JSON.stringify(error, null, 2));
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     return NextResponse.json(data ?? []);
-  } catch {
+  } catch (err: unknown) {
+    console.error("❌ Reply GET unexpected error:", err);
     return NextResponse.json({ error: "Failed to fetch replies." }, { status: 500 });
   }
 }

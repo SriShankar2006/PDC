@@ -1,6 +1,6 @@
 export interface Reply {
   id: string;
-  question_id: string;
+  answer_id: string;   // replies are scoped to an answer, not directly to a question
   content: string;
   author_name: string | null;
   created_at: string;

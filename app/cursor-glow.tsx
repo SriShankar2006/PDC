@@ -1,156 +1,111 @@
 'use client';
-
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 export default function CursorGlow() {
-  useEffect(() => {
-    // ── Single glass ring ──
-    const cursor = document.createElement('div');
-    cursor.style.cssText = [
-      'position:fixed',
-      'top:0',
-      'left:0',
-      'width:20px',
-      'height:20px',
-      'border-radius:50%',
-      'pointer-events:none',
-      'z-index:9999',
-      'transform:translate(-999px,-999px)',
-      'background:rgba(255,255,255,0.07)',
-      'backdrop-filter:blur(4px)',
-      '-webkit-backdrop-filter:blur(4px)',
-      'border:1px solid rgba(255,255,255,0.35)',
-      'box-shadow:0 0 10px rgba(139,92,246,0.5),0 0 22px rgba(139,92,246,0.2),inset 0 1px 0 rgba(255,255,255,0.3)',
-      'transition:width 0.25s cubic-bezier(0.34,1.56,0.64,1),height 0.25s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.2s ease,opacity 0.3s ease',
-      'will-change:transform',
-    ].join(';');
-    document.body.appendChild(cursor);
+  const dotRef   = useRef<HTMLDivElement>(null);
+  const ringRef  = useRef<HTMLDivElement>(null);
+  const glowRef  = useRef<HTMLDivElement>(null);
 
-    // ── Canvas for tail ──
-    const canvas = document.createElement('canvas');
-    canvas.style.cssText = [
-      'position:fixed',
-      'top:0',
-      'left:0',
-      'width:100%',
-      'height:100%',
-      'pointer-events:none',
-      'z-index:9998',
-    ].join(';');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    document.body.appendChild(canvas);
-    const ctx = canvas.getContext('2d')!;
+  // Smooth ring tracking
+  const mouse = useRef({ x: -200, y: -200 });
+  const ring  = useRef({ x: -200, y: -200 });
+  const raf   = useRef<number>(0);
 
-    const onResize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', onResize);
-
-    const MAX_TAIL = 22;
-    const tail: { x: number; y: number }[] = [];
-    let mouseX = -999, mouseY = -999;
-    let rafId: number;
-    let isHover = false;
-    let isMoving = false;
-    let stopTimer: ReturnType<typeof setTimeout>;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-      cursor.style.transform = `translate(${mouseX - 10}px,${mouseY - 10}px)`;
-
-      isMoving = true;
-      clearTimeout(stopTimer);
-
-      tail.unshift({ x: mouseX, y: mouseY });
-      if (tail.length > MAX_TAIL) tail.pop();
-
-      // Instantly clear tail when mouse stops
-      stopTimer = setTimeout(() => {
-        isMoving = false;
-        tail.length = 0;
-      }, 0);
-    };
-
-    function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      if (isMoving && tail.length > 1) {
-        for (let i = 1; i < tail.length; i++) {
-          const t = i / tail.length;
-          const alpha = (1 - t) * 0.55;
-          const radius = (1 - t) * 6.5 + 0.8;
-
-          ctx.beginPath();
-          ctx.arc(tail[i].x, tail[i].y, radius, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(139,92,246,${alpha})`;
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = `rgba(139,92,246,${alpha * 0.8})`;
-          ctx.fill();
-        }
-      }
-
-      rafId = requestAnimationFrame(animate);
-    }
-    animate();
-
-    // ── Hover: only ring effect, no blur on text ──
-    const interactables = 'a,button,input,textarea,select,[role="button"],label';
-
-    const handleMouseOver = (e: MouseEvent) => {
-      if ((e.target as Element)?.closest(interactables) && !isHover) {
-        isHover = true;
-        cursor.style.width = '28px';
-        cursor.style.height = '28px';
-        cursor.style.boxShadow = [
-          '0 0 18px rgba(139,92,246,0.75)',
-          '0 0 38px rgba(139,92,246,0.3)',
-          'inset 0 1px 0 rgba(255,255,255,0.4)',
-        ].join(',');
-      }
-    };
-
-    const handleMouseOut = (e: MouseEvent) => {
-      if ((e.target as Element)?.closest(interactables) && isHover) {
-        isHover = false;
-        cursor.style.width = '20px';
-        cursor.style.height = '20px';
-        cursor.style.boxShadow = [
-          '0 0 10px rgba(139,92,246,0.5)',
-          '0 0 22px rgba(139,92,246,0.2)',
-          'inset 0 1px 0 rgba(255,255,255,0.3)',
-        ].join(',');
-      }
-    };
-
-    const handleMouseLeave = () => {
-      cursor.style.opacity = '0';
-      isMoving = false;
-      tail.length = 0;
-    };
-    const handleMouseEnter = () => { cursor.style.opacity = '1'; };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseover', handleMouseOver);
-    document.addEventListener('mouseout', handleMouseOut);
-    document.addEventListener('mouseleave', handleMouseLeave);
-    document.addEventListener('mouseenter', handleMouseEnter);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      clearTimeout(stopTimer);
-      window.removeEventListener('resize', onResize);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseover', handleMouseOver);
-      document.removeEventListener('mouseout', handleMouseOut);
-      document.removeEventListener('mouseleave', handleMouseLeave);
-      document.removeEventListener('mouseenter', handleMouseEnter);
-      cursor.remove();
-      canvas.remove();
-    };
+  const spawnTrail = useCallback((x: number, y: number) => {
+    const p = document.createElement('div');
+    p.className = 'cursor-trail-particle';
+    p.style.left = `${x}px`;
+    p.style.top  = `${y}px`;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 500);
   }, []);
 
-  return null;
+  useEffect(() => {
+    const dot  = dotRef.current;
+    const ringEl = ringRef.current;
+    const glow = glowRef.current;
+    if (!dot || !ringEl || !glow) return;
+
+    let trailTimer = 0;
+
+    function onMouseMove(e: MouseEvent) {
+      const { clientX: x, clientY: y } = e;
+      mouse.current = { x, y };
+
+      // Snap dot immediately
+      dot!.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+      glow!.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+
+      // Spawn trail every 60ms while moving
+      const now = Date.now();
+      if (now - trailTimer > 60) {
+        spawnTrail(x, y);
+        trailTimer = now;
+      }
+
+      // Detect element type for cursor state
+      const target = e.target as HTMLElement;
+      const isInteractive = target.closest('button, a, [role="button"], select, label');
+      const isText = target.closest('input, textarea');
+
+      document.body.classList.toggle('cursor-hover', !!isInteractive && !isText);
+      document.body.classList.toggle('cursor-text',  !!isText);
+    }
+
+    function onMouseDown() {
+      document.body.classList.add('cursor-click');
+    }
+
+    function onMouseUp() {
+      document.body.classList.remove('cursor-click');
+    }
+
+    function onMouseLeave() {
+      dot!.style.opacity  = '0';
+      ringEl!.style.opacity = '0';
+      glow!.style.opacity = '0';
+    }
+
+    function onMouseEnter() {
+      dot!.style.opacity  = '1';
+      ringEl!.style.opacity = '1';
+      glow!.style.opacity = '1';
+    }
+
+    function tick() {
+      // Lerp ring towards mouse
+      ring.current.x += (mouse.current.x - ring.current.x) * 0.12;
+      ring.current.y += (mouse.current.y - ring.current.y) * 0.12;
+      ringEl!.style.transform = `translate(${ring.current.x}px, ${ring.current.y}px) translate(-50%, -50%)`;
+      raf.current = requestAnimationFrame(tick);
+    }
+    raf.current = requestAnimationFrame(tick);
+
+    document.addEventListener('mousemove',  onMouseMove);
+    document.addEventListener('mousedown',  onMouseDown);
+    document.addEventListener('mouseup',    onMouseUp);
+    document.addEventListener('mouseleave', onMouseLeave);
+    document.addEventListener('mouseenter', onMouseEnter);
+
+    return () => {
+      cancelAnimationFrame(raf.current);
+      document.removeEventListener('mousemove',  onMouseMove);
+      document.removeEventListener('mousedown',  onMouseDown);
+      document.removeEventListener('mouseup',    onMouseUp);
+      document.removeEventListener('mouseleave', onMouseLeave);
+      document.removeEventListener('mouseenter', onMouseEnter);
+      document.body.classList.remove('cursor-hover', 'cursor-text', 'cursor-click');
+    };
+  }, [spawnTrail]);
+
+  return (
+    <>
+      {/* Ambient glow that follows slowly */}
+      <div ref={glowRef} className="cursor-glow" aria-hidden="true" />
+      {/* Lagging outer ring */}
+      <div ref={ringRef} className="cursor-ring"  aria-hidden="true" />
+      {/* Snappy inner dot */}
+      <div ref={dotRef}  className="cursor-dot"   aria-hidden="true" />
+    </>
+  );
 }

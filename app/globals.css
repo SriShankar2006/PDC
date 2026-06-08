@@ -2,15 +2,13 @@
 
 @theme {
   --color-background: #f5f6fb;
-  --color-surface: #ffffff;
+  --color-surface: rgba(255,255,255,0.52);
   --color-foreground: #1a1a23;
   --color-muted: #71717a;
-  --color-border: #e7e7f0;
-
+  --color-border: rgba(200,200,220,0.42);
   --color-brand: #5b54e8;
   --color-brand-strong: #4a43d6;
   --color-brand-soft: #edecfd;
-
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -18,42 +16,46 @@
 @layer base {
   :root {
     --color-background: #f5f6fb;
-    --color-surface: #ffffff;
+    --color-surface: rgba(255,255,255,0.52);
     --color-foreground: #1a1a23;
     --color-muted: #71717a;
-    --color-border: #e7e7f0;
+    --color-border: rgba(200,200,220,0.42);
     --color-brand: #5b54e8;
     --color-brand-strong: #4a43d6;
     --color-brand-soft: #edecfd;
+    --header-bg: 245,246,251;
+    --header-border: 231,231,240;
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
       --color-background: #0f0f12;
-      --color-surface: #1a1a1f;
+      --color-surface: rgba(20,20,26,0.50);
       --color-foreground: #f5f5f8;
       --color-muted: #a0a0a8;
-      --color-border: #2a2a32;
+      --color-border: rgba(55,55,70,0.42);
       --color-brand: #6c63ff;
       --color-brand-strong: #7c73ff;
       --color-brand-soft: #2a2620;
+      --header-bg: 15,15,18;
+      --header-border: 42,42,50;
     }
   }
 
   .dark {
     --color-background: #0f0f12;
-    --color-surface: #1a1a1f;
+    --color-surface: rgba(20,20,26,0.50);
     --color-foreground: #f5f5f8;
     --color-muted: #a0a0a8;
-    --color-border: #2a2a32;
+    --color-border: rgba(55,55,70,0.42);
     --color-brand: #6c63ff;
     --color-brand-strong: #7c73ff;
     --color-brand-soft: #2a2620;
+    --header-bg: 15,15,18;
+    --header-border: 42,42,50;
   }
 
-  *,
-  ::before,
-  ::after {
+  *,::before,::after {
     border-color: var(--color-border);
   }
 
@@ -67,6 +69,11 @@
     );
     background-repeat: no-repeat;
     transition: background-color 0.3s ease, color 0.3s ease;
+    cursor: none;
+  }
+
+  a, button, [role="button"], input, textarea, select, label {
+    cursor: none;
   }
 
   ::selection {
@@ -80,71 +87,235 @@
     outline: 2px solid color-mix(in oklab, var(--color-brand) 55%, transparent);
     outline-offset: 2px;
   }
-
-  /* Hide default cursor — liquid cursor is rendered via JS */
-/* ==========================================
-   Hero Spotlight Effect
-========================================== */
-
-.hero-spotlight {
-  position: relative;
-  overflow: hidden;
 }
 
-.hero-spotlight::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+html, body { overflow-x: hidden; }
 
-  background:
-    radial-gradient(
-      400px circle at var(--mouse-x) var(--mouse-y),
-      rgba(91, 84, 232, 0.08),
-      transparent 70%
-    );
-
-  transition: background 0.05s linear;
+/* ── Glassmorphism cards — let the celestial bg show through ── */
+[class*="rounded-2xl"][class*="bg-surface"],
+[class*="rounded-xl"][class*="bg-surface"] {
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
 }
 
-/* ==========================================
-   Magnetic Elements
-========================================== */
-
-.magnetic {
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    border-color 0.2s ease;
-}
-
-.magnetic:hover {
-  box-shadow:
-    0 10px 30px rgba(91, 84, 232, 0.15);
-}
-
-/* ==========================================
-   Card Hover Effects
-========================================== */
-
-.question-card,
-.poll-card {
-  transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease;
-}
-
-.question-card:hover,
-.poll-card:hover {
+/* ── Card hover ── */
+.question-card:hover, .poll-card:hover {
   transform: translateY(-2px);
 }
 
-/* ==========================================
-   Performance
-========================================== */
-
-html,
-body {
-  overflow-x: hidden;
+/* ── Neon border on inputs ── */
+.neon-border-wrap {
+  position: relative;
+  border-radius: 0.75rem;
 }
+
+.neon-border-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--neon-angle, 0deg),
+    transparent 20%,
+    rgba(108,99,255,0.9) 40%,
+    rgba(147,130,255,1) 50%,
+    rgba(108,99,255,0.9) 60%,
+    transparent 80%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  animation: neon-spin 2.5s linear infinite;
+  animation-play-state: paused;
+}
+
+.neon-border-wrap:focus-within::before {
+  opacity: 1;
+  animation-play-state: running;
+}
+
+@property --neon-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes neon-spin {
+  to { --neon-angle: 360deg; }
+}
+
+/* ── Halo Search Button ── */
+.halo-search-btn {
+  position: relative;
+  background: transparent;
+  border: 1px solid rgba(108,99,255,0.35);
+  color: var(--color-brand);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.halo-search-btn:hover {
+  border-color: rgba(108,99,255,0.7);
+  background: rgba(108,99,255,0.08);
+  box-shadow: 0 0 18px rgba(108,99,255,0.25);
+}
+
+.halo-search-btn:disabled {
+  opacity: 0.5;
+}
+
+.halo-ring {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    rgba(108,99,255,0.6) 30%,
+    rgba(147,130,255,0.9) 50%,
+    rgba(108,99,255,0.6) 70%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  animation: halo-rotate 2s linear infinite;
+  animation-play-state: paused;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  padding: 1px;
+}
+
+.halo-search-btn:hover .halo-ring,
+.halo-search-btn:focus .halo-ring {
+  opacity: 1;
+  animation-play-state: running;
+}
+
+@property --halo-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes halo-rotate {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Fade In Animation ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease forwards;
+}
+
+/* ── Custom Cursor ── */
+.cursor-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  pointer-events: none;
+  z-index: 999999;
+  will-change: transform;
+  transition: width 0.2s ease, height 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 0 10px var(--color-brand), 0 0 20px rgba(108,99,255,0.4);
+}
+
+.cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(108,99,255,0.5);
+  pointer-events: none;
+  z-index: 999998;
+  will-change: transform;
+  transition: width 0.3s ease, height 0.3s ease, border-color 0.3s ease, opacity 0.3s ease;
+}
+
+.cursor-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(108,99,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 999990;
+  will-change: transform;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.4s ease;
+}
+
+/* Cursor state: hovering interactive elements */
+body.cursor-hover .cursor-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--color-brand-strong);
+  box-shadow: 0 0 16px var(--color-brand), 0 0 32px rgba(108,99,255,0.5);
+}
+
+body.cursor-hover .cursor-ring {
+  width: 52px;
+  height: 52px;
+  border-color: rgba(108,99,255,0.8);
+  border-width: 1.5px;
+}
+
+/* Cursor state: clicking */
+body.cursor-click .cursor-dot {
+  width: 6px;
+  height: 6px;
+  background: #fff;
+  box-shadow: 0 0 20px var(--color-brand), 0 0 40px rgba(108,99,255,0.7);
+}
+
+body.cursor-click .cursor-ring {
+  width: 28px;
+  height: 28px;
+  border-color: rgba(108,99,255,1);
+}
+
+/* Cursor state: on text inputs */
+body.cursor-text .cursor-dot {
+  width: 2px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--color-brand);
+  box-shadow: 0 0 8px var(--color-brand);
+}
+
+body.cursor-text .cursor-ring {
+  opacity: 0;
+}
+
+/* Cursor trail particles */
+@keyframes trail-fade {
+  0% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+}
+
+.cursor-trail-particle {
+  position: fixed;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  pointer-events: none;
+  z-index: 999995;
+  animation: trail-fade 0.5s ease forwards;
 }

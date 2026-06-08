@@ -1,11 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { Reply, ReactionCounts } from "@/lib/types";
+import type { ReactionCounts } from "@/lib/types";
+
+// Local Reply type — answer_id scopes each reply to a specific answer thread
+type Reply = {
+  id: string;
+  answer_id: string;
+  content: string;
+  author_name: string | null;
+  created_at: string;
+};
 
 const EMOJIS = ["👍", "❤️", "😂", "😮", "🎉"] as const;
 
-// Simple persistent userId per browser session
 function getUserId(): string {
   if (typeof window === "undefined") return "ssr";
   let id = localStorage.getItem("kealvi_user_id");
@@ -51,7 +59,7 @@ function ReactionBar({ questionId }: { questionId: string }) {
       setCounts((prev) => ({ ...prev, [emoji]: Math.max((prev[emoji] ?? 1) - 1, 0) }));
       setReacted((prev) => { const s = new Set(prev); s.delete(emoji); return s; });
     } else {
-      await fetchReactions(); // sync real counts
+      await fetchReactions();
     }
 
     setLoading(false);
@@ -93,10 +101,10 @@ function ReactionBar({ questionId }: { questionId: string }) {
 // ─── Reply Form ──────────────────────────────────────────────────────────────
 
 function ReplyForm({
-  questionId,
+  answerId,
   onPosted,
 }: {
-  questionId: string;
+  answerId: string;
   onPosted: (reply: Reply) => void;
 }) {
   const [content, setContent] = useState("");
@@ -110,20 +118,24 @@ function ReplyForm({
     setSubmitting(true);
     setError(null);
 
-    const res = await fetch(`/api/questions/${questionId}/reply`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: trimmed, author_name: authorName.trim() || null }),
-    });
+    try {
+      const res = await fetch(`/api/questions/${answerId}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: trimmed, author_name: authorName.trim() || null }),
+      });
 
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      setError(json.error ?? "Failed to post reply.");
-    } else {
-      const created: Reply = await res.json();
-      onPosted(created);
-      setContent("");
-      setAuthorName("");
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setError(json.error ?? "Failed to post reply.");
+      } else {
+        const created: Reply = await res.json();
+        onPosted(created);
+        setContent("");
+        setAuthorName("");
+      }
+    } catch {
+      setError("Network error. Please check your connection.");
     }
 
     setSubmitting(false);
@@ -161,19 +173,31 @@ function ReplyForm({
 
 // ─── Replies List ────────────────────────────────────────────────────────────
 
-function RepliesList({ questionId }: { questionId: string }) {
+// answerId is the [id] segment used by /api/questions/[id]/reply
+function RepliesList({ answerId }: { answerId: string }) {
   const [replies, setReplies] = useState<Reply[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/questions/${questionId}/reply`)
-      .then((r) => r.json())
-      .then((data) => {
+    setLoading(true);
+    setFetchError(null);
+    fetch(`/api/questions/${answerId}/reply`)
+      .then(async (r) => {
+        if (!r.ok) {
+          const json = await r.json().catch(() => ({}));
+          setFetchError(json.error ?? "Failed to load replies.");
+          return;
+        }
+        const data = await r.json();
         if (Array.isArray(data)) setReplies(data);
       })
+      .catch(() => {
+        setFetchError("Network error loading replies.");
+      })
       .finally(() => setLoading(false));
-  }, [questionId]);
+  }, [answerId]);
 
   function handlePosted(reply: Reply) {
     setReplies((prev) => [...prev, reply]);
@@ -193,6 +217,8 @@ function RepliesList({ questionId }: { questionId: string }) {
     <div className="mt-4 space-y-2">
       {loading ? (
         <p className="text-xs text-muted animate-pulse">Loading replies…</p>
+      ) : fetchError ? (
+        <p className="text-xs text-red-500">{fetchError}</p>
       ) : (
         <>
           {replies.length > 0 && (
@@ -220,7 +246,7 @@ function RepliesList({ questionId }: { questionId: string }) {
             </button>
           ) : (
             <>
-              <ReplyForm questionId={questionId} onPosted={handlePosted} />
+              <ReplyForm answerId={answerId} onPosted={handlePosted} />
               <button
                 onClick={() => setShowForm(false)}
                 className="text-xs text-muted hover:text-foreground"
@@ -237,11 +263,13 @@ function RepliesList({ questionId }: { questionId: string }) {
 
 // ─── Main Export: Question Interactions ──────────────────────────────────────
 
+// Note: this component is used at the question level (for reactions).
+// If you need per-answer replies, pass answerId to RepliesList directly.
 export default function QuestionInteractions({ questionId }: { questionId: string }) {
   return (
     <div className="mt-4 pt-4 border-t border-border space-y-1">
       <ReactionBar questionId={questionId} />
-      <RepliesList questionId={questionId} />
+      <RepliesList answerId={questionId} />
     </div>
   );
 }
